@@ -1,0 +1,26 @@
+message TRACKER_DetectionBall {
+  required float  confidence = 1;
+  required uint32 ball_id    = 2;
+  required float  x          = 3;
+  required float  y          = 4;
+  required float  vx         = 5;
+  required float  vy         = 6;
+}
+
+message TRACKER_DetectionRobot {
+  required float  confidence    =  1;
+  required uint32 robot_id      =  2;
+  required float  x             =  3;
+  required float  y             =  4;
+  required float  vx            =  5;
+  required float  vy            =  6;
+  required float  orientation   =  7;
+  required float  angular_speed =  8;
+}
+
+message TRACKER_Detection {
+  required double                 timestamp    = 1;
+  repeated TRACKER_DetectionBall  balls        = 2;
+  repeated TRACKER_DetectionRobot yellow_team  = 3;
+  repeated TRACKER_DetectionRobot blue_team    = 4;
+}

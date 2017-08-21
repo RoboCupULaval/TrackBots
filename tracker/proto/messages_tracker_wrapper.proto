@@ -1,0 +1,7 @@
+import "messages_tracker_detection.proto";
+import "messages_tracker_geometry.proto";
+
+message TRACKER_WrapperPacket {
+  optional TRACKER_Detection detection = 1;
+  optional TRACKER_Geometry geometry = 2;
+}
