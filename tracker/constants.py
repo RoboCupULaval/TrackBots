@@ -1,0 +1,52 @@
+from enum import Enum
+
+
+class TeamColor(Enum):
+    def __str__(self):
+        return 'blue' if self == TeamColor.BLUE else 'yellow'
+    YELLOW = 0
+    BLUE = 1
+
+
+# Tracker constants
+class TrackerConst:
+    TRACKER_HOST = '127.0.0.1'
+    TRACKER_PORT = 21111
+    SEND_DELAY = 0.02
+
+    MAX_BALL_ON_FIELD = 1
+    MAX_ROBOT_PER_TEAM = 12
+
+    BALL_CONFIDENCE_THRESHOLD = 1
+    BALL_SEPARATION_THRESHOLD = 500
+
+    STATE_PREDICTION_TIME = 0.1
+
+    MAX_UNDETECTED_DELAY = 2
+
+
+# Ball filter constants
+class BallConst:
+    INITIAL_CONFIDENCE = 20
+
+    INITIAL_STATE_COVARIANCE = 1000
+
+    POSITION_PROCESS_COVARIANCE = 1
+    VELOCITY_PROCESS_COVARIANCE = 10
+
+    POSITION_OBSERVATION_COVARIANCE = 2
+
+# Robot filter constants
+
+
+class RobotConst:
+    INITIAL_STATE_COVARIANCE = 1000
+
+    POSITION_PROCESS_COVARIANCE = 1
+    VELOCITY_PROCESS_COVARIANCE = 10
+    ORIENTATION_PROCESS_COVARIANCE = 0.05
+    ANGULAR_VELOCITY_PROCESS_COVARIANCE = 0.5
+
+    POSITION_OBSERVATION_COVARIANCE = 2
+    ORIENTATION_OBSERVATION_COVARIANCE = 0.05
+
