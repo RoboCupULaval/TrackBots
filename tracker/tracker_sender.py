@@ -19,8 +19,7 @@ from tracker.constants import TrackerConst
 
 class Tracker:
 
-    TRACKER_HOST = TrackerConst.TRACKER_HOST
-    TRACKER_PORT = TrackerConst.TRACKER_PORT
+    TRACKER_ADDRESS = TrackerConst.TRACKER_ADDRESS
     SEND_DELAY = TrackerConst.SEND_DELAY
 
     MAX_BALL_ON_FIELD = TrackerConst.MAX_BALL_ON_FIELD
@@ -42,7 +41,10 @@ class Tracker:
         signal.signal(signal.SIGINT, self._sigint_handler)
         self.tracker_thread = threading.Thread(target=self.tracker_main_loop)
 
-        self.server = udp_socket(Tracker.TRACKER_HOST, Tracker.TRACKER_PORT)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.connect(Tracker.TRACKER_ADDRESS)
+
         self.last_sending_time = time.time()
 
         self.vision_server = VisionReceiver(vision_address)
@@ -214,7 +216,7 @@ class Tracker:
         packet = self.generate_packet()
         
         try:
-            self.server.send(packet.SerializeToString())
+            self.sock.send(packet.SerializeToString())
         except ConnectionRefusedError:
             pass
 
@@ -229,7 +231,10 @@ class Tracker:
 
     def debug(self, host, port):
 
-        ui_server = udp_socket(host, port)
+        ui_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ui_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        ui_server.connect(Tracker.TRACKER_ADDRESS)
+
         self.logger.info('UI server create. ({}:{})'.format(host, port))
 
         debug_fps = 20
@@ -317,13 +322,3 @@ class Tracker:
         sc = sched.scheduler(time.time, time.sleep)
         sc.enter(1/debug_fps, 1, scheduled_loop, (sc,))
         sc.run()
-
-
-def udp_socket(host, port):
-    skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    connection_info = (host, port)
-    skt.connect(connection_info)
-    return skt
-
-

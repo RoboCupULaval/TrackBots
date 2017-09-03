@@ -10,8 +10,7 @@ class TeamColor(Enum):
 
 # Tracker constants
 class TrackerConst:
-    TRACKER_HOST = '127.0.0.1'
-    TRACKER_PORT = 21111
+    TRACKER_ADDRESS = ('127.0.0.1', 21111)
     SEND_DELAY = 0.02
 
     MAX_BALL_ON_FIELD = 2
