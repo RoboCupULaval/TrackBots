@@ -33,7 +33,7 @@ class Tracker:
 
     MAX_UNDETECTED_DELAY = TrackerConst.MAX_UNDETECTED_DELAY
 
-    def __init__(self, vision_host_ip, vision_port_number):
+    def __init__(self, vision_address):
 
         self.logger = logging.getLogger('TrackerServer')
         logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -45,8 +45,8 @@ class Tracker:
         self.server = udp_socket(Tracker.TRACKER_HOST, Tracker.TRACKER_PORT)
         self.last_sending_time = time.time()
 
-        self.vision_server = VisionReceiver(vision_host_ip, vision_port_number)
-        self.logger.info('VisionReceiver created. ({}:{})'.format(vision_host_ip, vision_port_number))
+        self.vision_server = VisionReceiver(vision_address)
+        self.logger.info('VisionReceiver created. ({}:{})'.format(*vision_address))
 
         self.debug_terminate = threading.Event()
 
