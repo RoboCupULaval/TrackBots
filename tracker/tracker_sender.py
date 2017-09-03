@@ -9,11 +9,9 @@ import time
 
 import numpy as np
 
-from tracker.constants import TeamColor
 from tracker.debug.debug_command import DebugCommand
 from tracker.filters.ball_kalman_filter import BallFilter
 from tracker.filters.robot_kalman_filter import RobotFilter
-from tracker.observations import BallObservation, RobotObservation
 from tracker.proto.messages_tracker_wrapper_pb2 import TRACKER_WrapperPacket
 from tracker.vision.vision_receiver import VisionReceiver
 from tracker.constants import TrackerConst
@@ -61,20 +59,34 @@ class Tracker:
 
     def start(self):
         self.vision_server.start()
-        while not self.vision_server.is_ready():
+        while not self.vision_server.is_ready:
             time.sleep(0.1)
         self.tracker_thread.start()
 
     def tracker_main_loop(self):
         while not self.thread_terminate.is_set():
 
-            obs = self.vision_server.get()
-            self.current_timestamp = obs.timestamp
+            detection_frame = self.vision_server.get()
+            self.current_timestamp = detection_frame.t_capture
 
-            if type(obs) is RobotObservation:
-                self.update_teams_with_observation(obs)
-            elif type(obs) is BallObservation:
-                self.update_balls_with_observation(obs)
+            for robot_obs in detection_frame.robots_blue:
+                obs_state = np.array([robot_obs.x, robot_obs.y, robot_obs.orientation])
+                self.blue_team[robot_obs.robot_id].update(obs_state, detection_frame.t_capture)
+
+            for robot_obs in detection_frame.robots_yellow:
+                obs_state = np.array([robot_obs.x, robot_obs.y, robot_obs.orientation])
+                self.yellow_team[robot_obs.robot_id].update(obs_state, detection_frame.t_capture)
+
+            for ball_obs in detection_frame.balls:
+                obs_state = np.array([ball_obs.x, ball_obs.y])
+                closest_ball = self.find_closest_ball_to_observation(obs_state)
+
+                if closest_ball is None:  # No ball or every balls are too far.
+                    self.considered_balls.append(BallFilter())
+                    self.considered_balls[-1].update(obs_state, detection_frame.t_capture)
+                    self.logger.info('New ball detected: {}.'.format(id(self.considered_balls[-1])))
+                else:
+                    closest_ball.update(obs_state, detection_frame.t_capture)
 
             self.remove_undetected_robots()
 
@@ -87,8 +99,6 @@ class Tracker:
                 self.last_sending_time = time.time()
                 self.send_packet()
 
-            time.sleep(0)
-
     def predict_next_states(self):
         for robot in self.yellow_team + self.blue_team:
             robot.predict(Tracker.STATE_PREDICTION_TIME)
@@ -98,28 +108,8 @@ class Tracker:
 
     def remove_undetected_robots(self):
         for robot in self.yellow_team + self.blue_team:
-            if robot.last_timestamp + Tracker.MAX_UNDETECTED_DELAY < self.current_timestamp:
+            if robot.last_t_capture + Tracker.MAX_UNDETECTED_DELAY < self.current_timestamp:
                 robot.is_active = False
-
-    def update_teams_with_observation(self, obs):
-        if obs.team_color is TeamColor.BLUE:
-            self.blue_team[obs.robot_id].update(obs)
-        else:
-            self.yellow_team[obs.robot_id].update(obs)
-
-    def update_balls_with_observation(self, obs):
-
-        closest_ball = self.find_closest_ball_to_observation(obs)
-
-        if closest_ball is None:  # No ball or every balls are too far.
-            self.considered_balls.append(BallFilter())
-            self.considered_balls[-1].update(obs)
-            self.logger.info('New ball detected: {}.'.format(id(self.considered_balls[-1])))
-        else:
-            closest_ball.update(obs)
-            closest_ball.increase_confidence()
-
-        # remove ball far outside field
 
     def find_closest_ball_to_observation(self, obs):
 
@@ -134,13 +124,13 @@ class Tracker:
 
         return closest_ball
 
-    def compute_distances_ball_to_observation(self, obs):
+    def compute_distances_ball_to_observation(self, obs_state):
         position_differences = []
         for ball in self.considered_balls:
             if ball.last_prediction is not None:
-                position_differences.append(float(np.linalg.norm(ball.get_position() - obs.states)))
+                position_differences.append(float(np.linalg.norm(ball.get_position() - obs_state)))
             elif ball.last_observation is not None:  # If we never predict the state, we still need to compare it
-                position_differences.append(float(np.linalg.norm(ball.last_observation.states - obs.states)))
+                position_differences.append(float(np.linalg.norm(ball.last_observation - obs_state)))
             else:  # This should never happens if ball are updated when create
                 position_differences.append(float('inf'))
 
@@ -161,7 +151,6 @@ class Tracker:
 
     def update_balls_confidence(self):
         for ball in self.considered_balls:
-            ball.decrease_confidence()
             if ball.confidence < Tracker.BALL_CONFIDENCE_THRESHOLD:
                 self.considered_balls.remove(ball)
                 self.logger.info('Removing ball {}.'.format(id(ball)))
@@ -276,7 +265,7 @@ class Tracker:
         def send_ui_commands():
             for robot in self.yellow_team:
                 if robot.last_observation is not None:
-                    pos_raw = robot.last_observation.states
+                    pos_raw = robot.last_observation
                     add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
                 if robot.get_position() is not None:
                     pos_filter = robot.get_position()
@@ -284,7 +273,7 @@ class Tracker:
 
             for robot in self.blue_team:
                 if robot.last_observation is not None:
-                    pos_raw = robot.last_observation.states
+                    pos_raw = robot.last_observation
                     add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
                 if robot.get_position() is not None:
                     pos_filter = robot.get_position()
@@ -297,7 +286,7 @@ class Tracker:
 
             for ball in self.balls:
                 if ball.last_observation is not None:
-                    pos_raw = ball.last_observation.states
+                    pos_raw = ball.last_observation
                     add_balls_position_commands(pos_raw, color=(255, 255, 255))
                 if ball.get_position() is not None:
                     pos_filter = ball.get_position()

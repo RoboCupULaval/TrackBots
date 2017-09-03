@@ -74,18 +74,18 @@ class RobotFilter(KalmanFilter):
                         RobotFilter.POSITION_OBSERVATION_COVARIANCE,
                         RobotFilter.ORIENTATION_OBSERVATION_COVARIANCE])
 
-    def update(self, obs):
+    def update(self, observation, t_capture):
 
         self.is_active = True
 
-        dt = obs.timestamp - self.last_timestamp
+        dt = t_capture - self.last_t_capture
         if dt < 0:
             return
-        self.last_timestamp = obs.timestamp
-        self.last_observation = obs
+        self.last_t_capture = t_capture
+        self.last_observation = observation
 
         self.F = self.transition_model(dt)
-        y = obs.states - np.dot(self.H, self.x)
+        y = observation - np.dot(self.H, self.x)
         y[2] = RobotFilter.wrap_to_pi(y[2])
         self.S = np.dot(np.dot(self.H, self.P), self.H.T) + self.R
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(self.S))

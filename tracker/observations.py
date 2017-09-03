@@ -1,38 +1,48 @@
 
-from tracker.constants import TeamColor
-from tracker.proto.messages_robocup_ssl_detection_pb2 import SSL_DetectionBall, SSL_DetectionRobot
+from collections import namedtuple
+from typing import Optional
 
-import numpy as np
-
-
-class Observation:
-
-    def __init__(self, timestamp: float, camera_id: int, frame_number: int):
-        assert(isinstance(camera_id, int))
-        assert(isinstance(timestamp, float))
-        assert(isinstance(frame_number, int) and frame_number >= 0)
-
-        self.camera_id = camera_id
-        self.timestamp = timestamp
-        self.frame_number = frame_number
+_detection_frame_fields = 'frame_number, t_capture, t_sent, camera_id, balls, robots_blue, robots_yellow'
+_robot_observation_fields = 'confidence, robot_id, x, y, orientation, pixel_x, pixel_y, height'
+_ball_observation_fields = 'confidence, area, x, y, z, pixel_x, pixel_y'
 
 
-class BallObservation(Observation):
+class RobotObservation(namedtuple('RobotObservation', _robot_observation_fields)):
 
-    def __init__(self, info: SSL_DetectionBall, timestamp: float, camera_id: int, frame_number: int):
-        self.states = np.array([info.x, info.y]).T
-        self.confidence = info.confidence
-        super().__init__(timestamp, camera_id, frame_number)
+    __slots__ = ()
+
+    # Add default argument to optional value
+    def __new__(cls,
+                robot_id: Optional[int]=None,
+                orientation: Optional[float]=None,
+                height: Optional[float]=None,
+                **kwargs):
+
+        return super().__new__(cls, robot_id=robot_id, orientation=orientation, height=height, **kwargs)
 
 
-class RobotObservation(Observation):
+class BallObservation(namedtuple('BallObservation', _ball_observation_fields)):
 
-    def __init__(self, info: SSL_DetectionRobot, team_color: TeamColor, timestamp: float, camera_id: int, frame_number: int):
+    __slots__ = ()
 
-        assert(team_color in TeamColor)
+    # Add default argument to optional value
+    def __new__(cls,
+                area: Optional[float]=None,
+                z: Optional[float]=None,
+                **kwargs):
 
-        self.robot_id = info.robot_id
-        self.team_color = team_color
-        self.states = np.array([info.x, info.y, info.orientation])
-        self.confidence = info.confidence
-        super().__init__(timestamp, camera_id, frame_number)
+        return super().__new__(cls, area=area, z=z, **kwargs)
+
+
+class DetectionFrame(namedtuple('DetectionFrame', _detection_frame_fields)):
+
+    __slots__ = ()
+
+    # Add default argument to optional value
+    def __new__(cls,
+                balls: Optional[BallObservation]=None,
+                robots_blue: Optional[RobotObservation]=None,
+                robots_yellow: Optional[RobotObservation]=None,
+                **kwargs):
+
+        return super().__new__(cls, balls=balls, robots_blue=robots_blue, robots_yellow=robots_yellow, **kwargs)

@@ -1,4 +1,7 @@
 
+import time
+
+
 class Field:
 
     def __init__(self):
@@ -25,6 +28,7 @@ class Field:
     def update(self, geometry_packet):
         self.geometry = geometry_packet
         self._field = geometry_packet.field
+        self.last_update = time.time()
         # self.parse_field_packet()
 
     def parse_field_packet(self):  # This is legacy, not good!

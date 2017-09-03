@@ -55,18 +55,20 @@ class BallFilter(KalmanFilter):
     def observation_covariance(self):
         return BallFilter.POSITION_OBSERVATION_COVARIANCE * np.eye(self.observable_state)
 
-    def update(self, obs):
+    def update(self, observation, t_capture):
         self.is_active = True
 
-        dt = obs.timestamp - self.last_timestamp
+        self._increase_confidence()
+
+        dt = t_capture - self.last_t_capture
         if dt < 0:
             return
-        self.last_timestamp = obs.timestamp
+        self.last_t_capture = t_capture
 
-        self.last_observation = obs
+        self.last_observation = observation
 
         self.F = self.transition_model(dt)
-        y = obs.states - np.dot(self.H, self.x)
+        y = observation - np.dot(self.H, self.x)
         self.S = np.dot(np.dot(self.H, self.P), self.H.T) + self.R
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(self.S))
 
@@ -74,17 +76,18 @@ class BallFilter(KalmanFilter):
         self.P = np.dot((np.eye(self.state_number) - np.dot(K, self.H)), self.P)
 
     def predict(self, dt=0):
+        self._decrease_confidence()
         self.F = self.transition_model(dt)
         self.B = self.control_input_model(dt)
         self.x = np.dot(self.F, self.x) + np.dot(self.B, self.u)
         self.P = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
 
-    def increase_confidence(self):
+    def _increase_confidence(self):
         self.confidence += 1
         if self.confidence > 100:
             self.confidence = 100
 
-    def decrease_confidence(self):
+    def _decrease_confidence(self):
         self.confidence *= 0.995
         if self.confidence < 0:
             self.confidence = 0

@@ -7,7 +7,7 @@ class KalmanFilter:
     def __init__(self):
 
         self.is_active = False
-        self.last_timestamp = 0
+        self.last_t_capture = 0
         self.last_observation = None
         self.last_prediction = None
 
@@ -60,7 +60,7 @@ class KalmanFilter:
         pass
 
     @abstractmethod
-    def update(self, obs) -> None:
+    def update(self, observation, t_capture) -> None:
         pass
 
     @abstractmethod
