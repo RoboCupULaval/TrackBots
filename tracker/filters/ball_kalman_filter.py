@@ -88,6 +88,6 @@ class BallFilter(KalmanFilter):
             self.confidence = 100
 
     def _decrease_confidence(self):
-        self.confidence *= 0.995
+        self.confidence *= 0.95
         if self.confidence < 0:
             self.confidence = 0

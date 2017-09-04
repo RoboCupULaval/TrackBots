@@ -1,11 +1,3 @@
-from enum import Enum
-
-
-class TeamColor(Enum):
-    def __str__(self):
-        return 'blue' if self == TeamColor.BLUE else 'yellow'
-    YELLOW = 0
-    BLUE = 1
 
 
 # Tracker constants
@@ -13,11 +5,11 @@ class TrackerConst:
     TRACKER_ADDRESS = ('127.0.0.1', 21111)
     SEND_DELAY = 0.02
 
-    MAX_BALL_ON_FIELD = 2
+    MAX_BALL_ON_FIELD = 1
     MAX_ROBOT_PER_TEAM = 12
 
     BALL_CONFIDENCE_THRESHOLD = 1
-    BALL_SEPARATION_THRESHOLD = 500
+    BALL_SEPARATION_THRESHOLD = 1000
 
     STATE_PREDICTION_TIME = 0.1
 

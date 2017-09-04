@@ -10,8 +10,8 @@ import time
 import numpy as np
 
 from tracker.debug.debug_command import DebugCommand
-from tracker.filters.ball_kalman_filter import BallFilter
 from tracker.filters.robot_kalman_filter import RobotFilter
+from tracker.multiballservice import MultiBallService
 from tracker.proto.messages_tracker_wrapper_pb2 import TRACKER_WrapperPacket
 from tracker.vision.vision_receiver import VisionReceiver
 from tracker.constants import TrackerConst
@@ -27,20 +27,17 @@ class Tracker:
     MAX_BALL_ON_FIELD = TrackerConst.MAX_BALL_ON_FIELD
     MAX_ROBOT_PER_TEAM = TrackerConst.MAX_ROBOT_PER_TEAM
 
-    BALL_CONFIDENCE_THRESHOLD = TrackerConst.BALL_CONFIDENCE_THRESHOLD
-    BALL_SEPARATION_THRESHOLD = TrackerConst.BALL_SEPARATION_THRESHOLD
-
     STATE_PREDICTION_TIME = TrackerConst.STATE_PREDICTION_TIME
 
     MAX_UNDETECTED_DELAY = TrackerConst.MAX_UNDETECTED_DELAY
 
     def __init__(self, vision_address):
 
-        self.logger = logging.getLogger('TrackerServer')
+        self.logger = logging.getLogger('Tracker')
         
         self.thread_terminate = threading.Event()
         signal.signal(signal.SIGINT, self._sigint_handler)
-        self.tracker_thread = threading.Thread(target=self.tracker_main_loop)
+        self._thread = threading.Thread(target=self.tracker_main_loop)
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -55,14 +52,13 @@ class Tracker:
 
         self.blue_team = [RobotFilter() for _ in range(Tracker.MAX_ROBOT_PER_TEAM)]
         self.yellow_team = [RobotFilter() for _ in range(Tracker.MAX_ROBOT_PER_TEAM)]
-        self.balls = []
-        self.considered_balls = []
+        self.balls = MultiBallService(Tracker.MAX_BALL_ON_FIELD)
 
         self.current_timestamp = None
 
     def start(self):
         self.vision_receiver.start()
-        self.tracker_thread.start()
+        self._thread.start()
 
     def tracker_main_loop(self):
         while not self.thread_terminate.is_set():
@@ -73,83 +69,26 @@ class Tracker:
             for robot_obs in detection_frame.robots_blue:
                 obs_state = np.array([robot_obs.x, robot_obs.y, robot_obs.orientation])
                 self.blue_team[robot_obs.robot_id].update(obs_state, detection_frame.t_capture)
+                self.blue_team[robot_obs.robot_id].predict(Tracker.STATE_PREDICTION_TIME)
 
             for robot_obs in detection_frame.robots_yellow:
                 obs_state = np.array([robot_obs.x, robot_obs.y, robot_obs.orientation])
                 self.yellow_team[robot_obs.robot_id].update(obs_state, detection_frame.t_capture)
+                self.yellow_team[robot_obs.robot_id].predict(Tracker.STATE_PREDICTION_TIME)
 
             for ball_obs in detection_frame.balls:
-                obs_state = np.array([ball_obs.x, ball_obs.y])
-                closest_ball = self.find_closest_ball_to_observation(obs_state)
+                self.balls.update_with_observation(ball_obs, detection_frame.t_capture)
 
-                if closest_ball is None:  # No ball or every balls are too far.
-                    self.considered_balls.append(BallFilter())
-                    self.considered_balls[-1].update(obs_state, detection_frame.t_capture)
-                    self.logger.info('New ball detected: {}.'.format(id(self.considered_balls[-1])))
-                else:
-                    closest_ball.update(obs_state, detection_frame.t_capture)
-
-            self.remove_undetected_robots()
-            self.remove_balls()
-            self.select_best_balls()
-            self.predict_next_states()
+            self.remove_undetected_robot()
 
             if time.time() - self.last_sending_time > Tracker.SEND_DELAY:
                 self.last_sending_time = time.time()
                 self.send_packet()
 
-    def predict_next_states(self):
-        for entity in self.yellow_team + self.blue_team + self.considered_balls:
-            entity.predict(Tracker.STATE_PREDICTION_TIME)
-
-    def remove_undetected_robots(self):
+    def remove_undetected_robot(self):
         for robot in self.yellow_team + self.blue_team:
             if robot.last_t_capture + Tracker.MAX_UNDETECTED_DELAY < self.current_timestamp:
                 robot.is_active = False
-
-    def find_closest_ball_to_observation(self, obs):
-
-        position_differences = self.compute_distances_ball_to_observation(obs)
-
-        closest_ball = None
-        if position_differences is not None:
-            min_diff = float(min(position_differences))
-            if min_diff < Tracker.BALL_SEPARATION_THRESHOLD:
-                closest_ball_idx = position_differences.index(min_diff)
-                closest_ball = self.considered_balls[closest_ball_idx]
-
-        return closest_ball
-
-    def compute_distances_ball_to_observation(self, obs_state):
-        position_differences = []
-        for ball in self.considered_balls:
-            if ball.last_prediction is not None:
-                position_differences.append(float(np.linalg.norm(ball.get_position() - obs_state)))
-            elif ball.last_observation is not None:  # If we never predict the state, we still need to compare it
-                position_differences.append(float(np.linalg.norm(ball.last_observation - obs_state)))
-            else:  # This should never happens if ball are updated when create
-                position_differences.append(float('inf'))
-
-        if not position_differences:
-            position_differences = None
-        elif len(position_differences) == 1 and position_differences[0] == float('inf'):
-            position_differences = None
-
-        return position_differences
-
-    def select_best_balls(self):
-        if len(self.considered_balls) > 0:
-            self.considered_balls.sort(key=lambda x: x.confidence, reverse=True)
-            max_ball = min(Tracker.MAX_BALL_ON_FIELD, len(self.considered_balls))
-            self.balls = self.considered_balls[0:max_ball]
-        else:
-            self.balls.clear()
-
-    def remove_balls(self):
-        for ball in self.considered_balls:
-            if ball.confidence < Tracker.BALL_CONFIDENCE_THRESHOLD:
-                self.considered_balls.remove(ball)
-                self.logger.info('Removing ball {}.'.format(id(ball)))
 
     def generate_packet(self):
 
@@ -216,7 +155,7 @@ class Tracker:
 
     def stop(self):
         self.thread_terminate.set()
-        self.tracker_thread.join()
+        self._thread.join()
         self.thread_terminate.clear()
         self.debug_terminate.set()
 
@@ -278,7 +217,7 @@ class Tracker:
                     pos_filter = robot.get_position()
                     add_robot_position_commands(pos_filter, color=(0, 0, 255))
 
-            for ball in self.considered_balls:
+            for ball in self.balls.considered_balls:
                 if ball.get_position() is not None:
                     pos_filter = ball.get_position()
                     add_balls_position_commands(pos_filter, color=(255, 0, 0))
@@ -302,7 +241,7 @@ class Tracker:
         def print_info():
             if 0.95 < time.time() % 1 < 1:
                 print('Balls confidence:',
-                      ' '.join('{:.1f}'.format(ball.confidence) for ball in self.considered_balls),
+                      ' '.join('{:.1f}'.format(ball.confidence) for ball in self.balls.considered_balls),
                       'Balls: ',
                       ' '.join('{}'.format(id(ball)) for ball in self.balls))
 
