@@ -16,6 +16,8 @@ from tracker.proto.messages_tracker_wrapper_pb2 import TRACKER_WrapperPacket
 from tracker.vision.vision_receiver import VisionReceiver
 from tracker.constants import TrackerConst
 
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
 
 class Tracker:
 
@@ -35,8 +37,7 @@ class Tracker:
     def __init__(self, vision_address):
 
         self.logger = logging.getLogger('TrackerServer')
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
-
+        
         self.thread_terminate = threading.Event()
         signal.signal(signal.SIGINT, self._sigint_handler)
         self.tracker_thread = threading.Thread(target=self.tracker_main_loop)
@@ -47,7 +48,7 @@ class Tracker:
 
         self.last_sending_time = time.time()
 
-        self.vision_server = VisionReceiver(vision_address)
+        self.vision_receiver = VisionReceiver(vision_address)
         self.logger.info('VisionReceiver created. ({}:{})'.format(*vision_address))
 
         self.debug_terminate = threading.Event()
@@ -60,15 +61,13 @@ class Tracker:
         self.current_timestamp = None
 
     def start(self):
-        self.vision_server.start()
-        while not self.vision_server.is_ready:
-            time.sleep(0.1)
+        self.vision_receiver.start()
         self.tracker_thread.start()
 
     def tracker_main_loop(self):
         while not self.thread_terminate.is_set():
 
-            detection_frame = self.vision_server.get()
+            detection_frame = self.vision_receiver.get()
             self.current_timestamp = detection_frame.t_capture
 
             for robot_obs in detection_frame.robots_blue:
@@ -91,10 +90,8 @@ class Tracker:
                     closest_ball.update(obs_state, detection_frame.t_capture)
 
             self.remove_undetected_robots()
-
-            self.update_balls_confidence()
+            self.remove_balls()
             self.select_best_balls()
-
             self.predict_next_states()
 
             if time.time() - self.last_sending_time > Tracker.SEND_DELAY:
@@ -102,11 +99,8 @@ class Tracker:
                 self.send_packet()
 
     def predict_next_states(self):
-        for robot in self.yellow_team + self.blue_team:
-            robot.predict(Tracker.STATE_PREDICTION_TIME)
-
-        for ball in self.considered_balls:
-            ball.predict(Tracker.STATE_PREDICTION_TIME)
+        for entity in self.yellow_team + self.blue_team + self.considered_balls:
+            entity.predict(Tracker.STATE_PREDICTION_TIME)
 
     def remove_undetected_robots(self):
         for robot in self.yellow_team + self.blue_team:
@@ -151,7 +145,7 @@ class Tracker:
         else:
             self.balls.clear()
 
-    def update_balls_confidence(self):
+    def remove_balls(self):
         for ball in self.considered_balls:
             if ball.confidence < Tracker.BALL_CONFIDENCE_THRESHOLD:
                 self.considered_balls.remove(ball)
@@ -229,13 +223,13 @@ class Tracker:
     def _sigint_handler(self, *args):
         self.stop()
 
-    def debug(self, host, port):
+    def debug(self, address):
 
         ui_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         ui_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        ui_server.connect(Tracker.TRACKER_ADDRESS)
+        ui_server.connect(address)
 
-        self.logger.info('UI server create. ({}:{})'.format(host, port))
+        self.logger.info('UI server create. ({}:{})'.format(*address))
 
         debug_fps = 20
         ui_commands = []
