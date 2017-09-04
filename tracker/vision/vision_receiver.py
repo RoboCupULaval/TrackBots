@@ -3,6 +3,9 @@ import socket
 import queue
 import threading
 import logging
+from ipaddress import ip_address
+
+import struct
 
 from tracker.field import Field
 from tracker.observations import DetectionFrame, BallObservation, RobotObservation
@@ -17,8 +20,13 @@ class VisionReceiver:
 
         self.logger = logging.getLogger('VisionReceiver')
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(server_address)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(server_address)
+
+        if ip_address(server_address[0]).is_multicast:
+            self.socket.setsockopt(socket.IPPROTO_IP,
+                                   socket.IP_ADD_MEMBERSHIP,
+                                   struct.pack("=4sl", socket.inet_aton(server_address[0]), socket.INADDR_ANY))
 
         self.field = Field()
         self._detection_frame_queue = queue.Queue()
@@ -36,7 +44,7 @@ class VisionReceiver:
     def receive_packet(self):
         packet = SSL_WrapperPacket()
         while True:
-            data, _ = self.sock.recvfrom(2048)
+            data, _ = self.socket.recvfrom(2048)
             packet.ParseFromString(data)
             if packet.HasField('detection'):
                 self.create_detection_frame(packet)
@@ -47,12 +55,11 @@ class VisionReceiver:
         self.logger.info('Waiting for geometry from {}:{}'.format(*self.server_address))
         packet = SSL_WrapperPacket()
         while self.field.geometry is None:
-            data, _ = self.sock.recvfrom(2048)
+            data, _ = self.socket.recvfrom(2048)
             packet.ParseFromString(data)
             if packet.HasField('geometry'):
                 self.logger.info('Geometry packet received.')
                 self.field.update(packet.geometry)
-            print(data)
 
     def create_detection_frame(self, packet):
         balls = []
