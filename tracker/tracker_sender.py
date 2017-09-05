@@ -22,7 +22,6 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 class Tracker:
 
     TRACKER_ADDRESS = TrackerConst.TRACKER_ADDRESS
-    SEND_DELAY = TrackerConst.SEND_DELAY
 
     MAX_BALL_ON_FIELD = TrackerConst.MAX_BALL_ON_FIELD
     MAX_ROBOT_PER_TEAM = TrackerConst.MAX_ROBOT_PER_TEAM
@@ -80,10 +79,7 @@ class Tracker:
                 self.balls.update_with_observation(ball_obs, detection_frame.t_capture)
 
             self.remove_undetected_robot()
-
-            if time.time() - self.last_sending_time > Tracker.SEND_DELAY:
-                self.last_sending_time = time.time()
-                self.send_packet()
+            self.send_packet()
 
     def remove_undetected_robot(self):
         for robot in self.yellow_team + self.blue_team:
