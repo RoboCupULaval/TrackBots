@@ -14,6 +14,6 @@ class VisionTestCase(unittest.TestCase):
 
 
 class VisionXXXTest(VisionTestCase):
-    
+
     def test_chose(self):
         pass
