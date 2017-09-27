@@ -75,7 +75,6 @@ class RobotFilter(KalmanFilter):
                         RobotFilter.ORIENTATION_OBSERVATION_COVARIANCE])
 
     def update(self, observation, t_capture):
-
         self.is_active = True
 
         dt = t_capture - self.last_t_capture

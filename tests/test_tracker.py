@@ -1,7 +1,7 @@
 # Under MIT License, see LICENSE.txt
 import unittest
 
-from tracker.tracker_sender import Tracker
+from tracker.tracker import Tracker
 
 
 class TrackerTestCase(unittest.TestCase):
