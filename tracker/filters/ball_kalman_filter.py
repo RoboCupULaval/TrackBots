@@ -18,7 +18,7 @@ class BallFilter(KalmanFilter):
         self.confidence = BallFilter.INITIAL_CONFIDENCE
         super().__init__()
 
-    def get_position(self):
+    def get_pose(self):
         if not self.is_active:
             return None
         else:

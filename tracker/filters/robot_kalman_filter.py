@@ -19,7 +19,7 @@ class RobotFilter(KalmanFilter):
         self.tau = [0.3, 0.3, 0.3]
         super().__init__()
 
-    def get_position(self):
+    def get_pose(self):
         if not self.is_active:
             return None
         else:

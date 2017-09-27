@@ -28,7 +28,7 @@ class KalmanFilter:
         self.u = np.zeros(self.observable_state)
 
     @abstractmethod
-    def get_position(self):
+    def get_pose(self):
         pass
 
     @abstractmethod

@@ -10,7 +10,7 @@ from tracker.filters.robot_kalman_filter import RobotFilter
 from tracker.multiballservice import MultiBallService
 from tracker.vision.vision_receiver import VisionReceiver
 from tracker.constants import TrackerConst
-from tracker.trackframe import TrackFrame, Robot, Ball
+from tracker.track_frame import TrackFrame, Robot, Ball
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -86,33 +86,30 @@ class Tracker:
 
         track_fields['robots_blue'] = []
         for robot_id, robot in enumerate(self.blue_team):
-            if not robot.is_active:
-                continue
-            robot_fields = dict()
-            robot_fields['pose'] = tuple(robot.get_position())
-            robot_fields['velocity'] = tuple(robot.get_velocity())
-            robot_fields['robot_id'] = robot_id
-            track_fields['robots_blue'].append(Robot(**robot_fields))
+            if robot.is_active:
+                robot_fields = Tracker.get_fields(robot, robot_id)
+                track_fields['robots_blue'].append(Robot(**robot_fields))
 
         track_fields['robots_yellow'] = []
         for robot_id, robot in enumerate(self.yellow_team):
-            if not robot.is_active:
-                continue
-            robot_fields = dict()
-            robot_fields['pose'] = tuple(robot.get_position())
-            robot_fields['velocity'] = tuple(robot.get_velocity())
-            robot_fields['robot_id'] = robot_id
-            track_fields['robots_yellow'].append(Robot(**robot_fields))
+            if robot.is_active:
+                robot_fields = Tracker.get_fields(robot, robot_id)
+                track_fields['robots_yellow'].append(Robot(**robot_fields))
 
         track_fields['balls'] = []
         for idx, ball in enumerate(self.balls):
-            ball_fields = dict()
-            ball_fields['pose'] = tuple(ball.get_position())
-            ball_fields['velocity'] = tuple(ball.get_velocity())
-            ball_fields['ball_id'] = idx
+            ball_fields = Tracker.get_fields(ball, idx)
             track_fields['balls'].append(Ball(**ball_fields))
 
         return TrackFrame(**track_fields)
+
+    @staticmethod
+    def get_fields(entity, idx):
+        fields = dict()
+        fields['pose'] = tuple(entity.get_pose())
+        fields['velocity'] = tuple(entity.get_velocity())
+        fields['id'] = idx
+        return fields
 
     def stop(self):
         self.thread_terminate.set()

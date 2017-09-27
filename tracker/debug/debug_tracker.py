@@ -57,29 +57,29 @@ class Debug:
             if robot.last_observation is not None:
                 pos_raw = robot.last_observation
                 self.add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
-            if robot.get_position() is not None:
-                pos_filter = robot.get_position()
+            if robot.get_pose() is not None:
+                pos_filter = robot.get_pose()
                 self.add_robot_position_commands(pos_filter, color=(255, 255, 0))
 
         for robot in self.tracker.blue_team:
             if robot.last_observation is not None:
                 pos_raw = robot.last_observation
                 self.add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
-            if robot.get_position() is not None:
-                pos_filter = robot.get_position()
+            if robot.get_pose() is not None:
+                pos_filter = robot.get_pose()
                 self.add_robot_position_commands(pos_filter, color=(0, 0, 255))
 
         for ball in self.tracker.balls.considered_balls:
-            if ball.get_position() is not None:
-                pos_filter = ball.get_position()
+            if ball.get_pose() is not None:
+                pos_filter = ball.get_pose()
                 self.add_balls_position_commands(pos_filter, color=(255, 0, 0))
 
         for ball in self.tracker.balls:
             if ball.last_observation is not None:
                 pos_raw = ball.last_observation
                 self.add_balls_position_commands(pos_raw, color=(255, 255, 255))
-            if ball.get_position() is not None:
-                pos_filter = ball.get_position()
+            if ball.get_pose() is not None:
+                pos_filter = ball.get_pose()
                 self.add_balls_position_commands(pos_filter, color=(255, 100, 0))
 
         try:
