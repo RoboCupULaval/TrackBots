@@ -19,13 +19,13 @@ class RobotFilter(KalmanFilter):
         self.tau = [0.3, 0.3, 0.3]
         super().__init__()
 
-    def get_pose(self):
-        if not self.is_active:
-            return None
-        else:
+    @property
+    def pose(self):
+        if self.is_active:
             return np.array([self.x[0], self.x[2], self.x[4]]).flatten()
 
-    def get_velocity(self):
+    @property
+    def velocity(self):
         if not self.is_active:
             return None
         else:

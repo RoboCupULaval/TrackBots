@@ -28,11 +28,11 @@ class KalmanFilter:
         self.u = np.zeros(self.observable_state)
 
     @abstractmethod
-    def get_pose(self):
+    def pose(self):
         pass
 
     @abstractmethod
-    def get_velocity(self):
+    def velocity(self):
         pass
 
     @abstractmethod

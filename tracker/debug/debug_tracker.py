@@ -53,33 +53,33 @@ class Debug:
         self.ui_commands.append(DebugCommand(3003, data_circle))
 
     def send_ui_commands(self):
-        for robot in self.tracker.yellow_team:
+        for robot in self.tracker._yellow_team:
             if robot.last_observation is not None:
                 pos_raw = robot.last_observation
                 self.add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
-            if robot.get_pose() is not None:
-                pos_filter = robot.get_pose()
+            if robot.pose is not None:
+                pos_filter = robot.pose
                 self.add_robot_position_commands(pos_filter, color=(255, 255, 0))
 
-        for robot in self.tracker.blue_team:
+        for robot in self.tracker._blue_team:
             if robot.last_observation is not None:
                 pos_raw = robot.last_observation
                 self.add_robot_position_commands(pos_raw, color=(255, 0, 0), radius=10, color_angle=(255, 0, 0))
-            if robot.get_pose() is not None:
-                pos_filter = robot.get_pose()
+            if robot.pose is not None:
+                pos_filter = robot.pose
                 self.add_robot_position_commands(pos_filter, color=(0, 0, 255))
 
-        for ball in self.tracker.balls.considered_balls:
-            if ball.get_pose() is not None:
-                pos_filter = ball.get_pose()
+        for ball in self.tracker._balls.considered_balls:
+            if ball.pose is not None:
+                pos_filter = ball.pose
                 self.add_balls_position_commands(pos_filter, color=(255, 0, 0))
 
-        for ball in self.tracker.balls:
+        for ball in self.tracker._balls:
             if ball.last_observation is not None:
                 pos_raw = ball.last_observation
                 self.add_balls_position_commands(pos_raw, color=(255, 255, 255))
-            if ball.get_pose() is not None:
-                pos_filter = ball.get_pose()
+            if ball.pose is not None:
+                pos_filter = ball.pose
                 self.add_balls_position_commands(pos_filter, color=(255, 100, 0))
 
         try:
@@ -93,9 +93,10 @@ class Debug:
     def print_info(self):
         if 0.95 < time.time() % 1 < 1:
             print('Balls confidence:',
-                  ' '.join('{:.1f}'.format(ball.confidence) for ball in self.tracker.balls.considered_balls),
+                  ' '.join('{:.1f}'.format(ball.confidence) for ball in self.tracker._balls.considered_balls),
                   'Balls: ',
-                  ' '.join('{}'.format(id(ball)) for ball in self.tracker.balls))
+                  ' '.join('{}'.format(id(ball)) for ball in self.tracker._balls))
+            print(self.tracker.track_frame)
 
     def scheduled_loop(self, scheduler):
 

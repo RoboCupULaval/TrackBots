@@ -18,13 +18,13 @@ class BallFilter(KalmanFilter):
         self.confidence = BallFilter.INITIAL_CONFIDENCE
         super().__init__()
 
-    def get_pose(self):
-        if not self.is_active:
-            return None
-        else:
+    @property
+    def pose(self):
+        if self.is_active:
             return np.array([self.x[0], self.x[2]]).flatten()
 
-    def get_velocity(self):
+    @property
+    def velocity(self):
         if not self.is_active:
             return None
         else:

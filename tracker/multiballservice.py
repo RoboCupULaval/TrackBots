@@ -64,7 +64,7 @@ class MultiBallService:
         position_differences = []
         for ball in self.considered_balls:
             if ball.last_prediction is not None:
-                position_differences.append(float(np.linalg.norm(ball.get_pose() - obs_state)))
+                position_differences.append(float(np.linalg.norm(ball.pose() - obs_state)))
             elif ball.last_observation is not None:  # If we never predict the state, we still need to compare it
                 position_differences.append(float(np.linalg.norm(ball.last_observation - obs_state)))
             else:  # This should never happens if ball are updated when create
