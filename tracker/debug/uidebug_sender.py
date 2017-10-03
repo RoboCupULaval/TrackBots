@@ -7,7 +7,7 @@ from tracker.debug.debug_command import DebugCommand
 import threading
 
 
-class Debug:
+class UIDebugSender:
 
     def __init__(self, tracker, address):
         self.ui_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

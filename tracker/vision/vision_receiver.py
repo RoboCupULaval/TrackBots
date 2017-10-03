@@ -34,7 +34,7 @@ class VisionReceiver:
         self._thread = threading.Thread(target=self.receive_packet, daemon=True)
 
     def get(self):
-        return self._detection_frame_queue.get()
+        return self._detection_frame_queue.get(block=True, timeout=30)
 
     def start(self):
         self.logger.info('Starting vision receiver thread.')

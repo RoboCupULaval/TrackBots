@@ -1,7 +1,7 @@
 import signal
 from tracker.tracker import Tracker
 from tracker.constants import TrackerConst
-from tracker.debug.debug_tracker import Debug
+from tracker.debug.uidebug_sender import UIDebugSender
 from tracker.send_packet import send_packets, get_socket, send_udp
 
 
@@ -11,7 +11,7 @@ tracker.start()
 
 signal.signal(signal.SIGINT, lambda *args: tracker.stop())
 
-debug = Debug(tracker, ('127.0.0.1', 20021))
+debug = UIDebugSender(tracker, ('127.0.0.1', 20021))
 debug.start()
 
 sock = get_socket(TrackerConst.TRACKER_ADDRESS)
